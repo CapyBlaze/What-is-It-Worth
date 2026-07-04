@@ -1,3 +1,12 @@
+<script setup lang="ts">
+defineProps({
+    validated: { type: Boolean, required: true },
+    resultMsg: { type: Object, required: true },
+    resultPoints: { type: Number, required: true },
+});
+defineEmits(["next"]);
+</script>
+
 <template>
     <div class="result-panel" :class="{ show: validated }">
         <div class="result-badge" :class="resultMsg.cls">{{ resultMsg.badge }}</div>
@@ -10,15 +19,6 @@
         </div>
     </div>
 </template>
-
-<script setup>
-defineProps({
-    validated: { type: Boolean, required: true },
-    resultMsg: { type: Object, required: true },
-    resultPoints: { type: Number, required: true },
-});
-defineEmits(["next"]);
-</script>
 
 <style scoped>
 .result-panel {

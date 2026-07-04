@@ -1,6 +1,38 @@
+<script setup lang="ts">
+import AppHeader from "./components/AppHeader.vue";
+import GuessControls from "./components/GuessControls.vue";
+import HeroBanner from "./components/HeroBanner.vue";
+import PriceGauge from "./components/PriceGauge.vue";
+import ProductCard from "./components/ProductCard.vue";
+import ResultPanel from "./components/ResultPanel.vue";
+import { useGame } from "./composables/useGame";
+
+const {
+    current,
+    totalScore,
+    selectedCategory,
+    setCategory,
+    gaugeMax,
+    guess,
+    validated,
+    needleAngle,
+    targetMark,
+    resultMsg,
+    resultPoints,
+    pickProduct,
+    onValidate,
+    resetScore,
+} = useGame();
+</script>
+
 <template>
-    <AppHeader :totalScore="totalScore" />
-    <HeroBanner />
+    <AppHeader
+        :total-score="totalScore"
+        :model-value="selectedCategory"
+        @update:model-value="setCategory"
+        @reset-score="resetScore"
+    />
+    <HeroBanner :category="selectedCategory" />
 
     <main v-if="current">
         <div class="game-card">
@@ -34,30 +66,6 @@
         </div>
     </main>
 </template>
-
-<script setup lang="ts">
-import AppHeader from "./components/AppHeader.vue";
-import GuessControls from "./components/GuessControls.vue";
-import HeroBanner from "./components/HeroBanner.vue";
-import PriceGauge from "./components/PriceGauge.vue";
-import ProductCard from "./components/ProductCard.vue";
-import ResultPanel from "./components/ResultPanel.vue";
-import { useGame } from "./composables/useGame";
-
-const {
-    current,
-    totalScore,
-    gaugeMax,
-    guess,
-    validated,
-    needleAngle,
-    targetMark,
-    resultMsg,
-    resultPoints,
-    pickProduct,
-    onValidate,
-} = useGame();
-</script>
 
 <style scoped>
 main {

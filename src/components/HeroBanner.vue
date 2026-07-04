@@ -1,14 +1,27 @@
+<script setup lang="ts">
+defineProps({
+    category: { type: String, required: true },
+});
+</script>
+
 <template>
     <section class="hero">
-        <h1>All the categories</h1>
+        <h1 v-if="category === 'all'">All the categories</h1>
+        <h1 v-else-if="category === 'electronics'">Electronics</h1>
+        <h1 v-else-if="category === 'home'">Home</h1>
+        <h1 v-else-if="category === 'smart-home'">Smart home</h1>
+        <h1 v-else-if="category === 'tools'">DIY</h1>
+        <h1 v-else-if="category === 'sports'">Sports</h1>
+        <h1 v-else-if="category === 'pets'">Pets</h1>
+        <h1 v-else-if="category === 'travel'">Travel</h1>
+        <h1 v-else-if="category === 'toys'">Toys</h1>
+        <h1 v-else>Category: {{ category }}</h1>
     </section>
 </template>
 
-<script setup></script>
-
 <style scoped>
 .hero {
-    margin-top: 15px;
+    padding-top: 80px;
     text-align: center;
 }
 

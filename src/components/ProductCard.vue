@@ -1,3 +1,9 @@
+<script setup lang="ts">
+defineProps({
+    product: { type: Object, required: true },
+});
+</script>
+
 <template>
     <div class="product-zone">
         <div class="product-image-wrap">
@@ -34,12 +40,6 @@
         </div>
     </div>
 </template>
-
-<script setup>
-defineProps({
-    product: { type: Object, required: true },
-});
-</script>
 
 <style scoped>
 .product-zone {

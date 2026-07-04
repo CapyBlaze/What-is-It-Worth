@@ -3,16 +3,42 @@ import { computed, onMounted, reactive, ref } from "vue";
 const products = ref<Product[]>([]);
 let currentChunk = 0;
 
-const CHUNK_COUNT = 183; // amazon_products_0001.csv → amazon_products_0183.csv
+const CHUNK_COUNT = 183;
 
-async function loadChunk() {
-    currentChunk = Math.floor(Math.random() * CHUNK_COUNT) + 1;
+let categoryIndexCache: Record<string, number[]> | null = null;
+
+async function loadCategoryIndex(): Promise<Record<string, number[]>> {
+    if (categoryIndexCache) return categoryIndexCache;
+
+    const res = await fetch("/data/category-index.json");
+    if (!res.ok) throw new Error("Impossible de charger l'index des catégories.");
+
+    categoryIndexCache = await res.json();
+    return categoryIndexCache as Record<string, number[]>;
+}
+
+async function loadChunk(categoryGroupId: string) {
+    const index = await loadCategoryIndex();
+    const candidates = index[categoryGroupId]?.length
+        ? index[categoryGroupId]
+        : Array.from({ length: CHUNK_COUNT }, (_, i) => i + 1);
+
+    currentChunk = candidates[Math.floor(Math.random() * candidates.length)];
 
     const filename = `/data/amazon_products_${String(currentChunk).padStart(4, "0")}.csv`;
-
     const text = await fetch(filename).then((r) => r.text());
 
-    products.value = parseCSV(text);
+    let parsed = parseCSV(text);
+
+    if (categoryGroupId !== "all") {
+        const groupCategoryIds =
+            GAME_CATEGORIES.find((g) => g.id === categoryGroupId)?.categories ?? [];
+        const filtered = parsed.filter((p) => groupCategoryIds.includes(p.categoryId));
+        // filet de sécurité si l'index est légèrement désynchronisé des fichiers
+        parsed = filtered.length > 0 ? filtered : parsed;
+    }
+
+    products.value = parsed;
 }
 
 type Product = {
@@ -22,11 +48,9 @@ type Product = {
     rating: number;
     reviews: number;
     price: number;
-    bought: number;
+    categoryId: number;
 };
 
-// Parse une ligne CSV en respectant les champs entre guillemets
-// (ex: un titre contenant des virgules), à la manière d'un vrai parseur CSV.
 function splitCSVLine(line: string): string[] {
     const result: string[] = [];
     let field = "";
@@ -63,6 +87,7 @@ function parseCSV(text: string): Product[] {
     return text
         .split("\n")
         .filter(Boolean)
+        .slice(1) // on saute la ligne d'en-tête "asin","title","imgUrl","stars","reviews","price","category_id"
         .map((line) => {
             const p = splitCSVLine(line);
             return {
@@ -72,46 +97,88 @@ function parseCSV(text: string): Product[] {
                 rating: parseFloat(p[3]),
                 reviews: parseInt(p[4], 10),
                 price: parseFloat(p[5]),
-                bought: parseInt(p[6], 10),
+                categoryId: parseInt(p[6], 10),
             };
         });
 }
 
+export const GAME_CATEGORIES = [
+    {
+        id: "all",
+        categories: [],
+    },
+    {
+        id: "electronics",
+        categories: [56, 57, 68, 69, 70, 71, 72, 73, 74, 75, 77, 79, 80, 81, 82, 83],
+    },
+    {
+        id: "home",
+        categories: [163, 164, 165, 166, 169, 170, 171, 173, 175, 176, 201],
+    },
+    {
+        id: "smart-home",
+        categories: [185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197],
+    },
+    {
+        id: "tools",
+        categories: [204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 215],
+    },
+    {
+        id: "sports",
+        categories: [198, 199, 200],
+    },
+    {
+        id: "pets",
+        categories: [178, 179, 180, 181, 182, 183, 184],
+    },
+    {
+        id: "travel",
+        categories: [99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109],
+    },
+    {
+        id: "toys",
+        categories: [
+            217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233,
+            234, 235, 236, 237, 238, 239, 240, 270,
+        ],
+    },
+];
+
 const MESSAGES = {
     perfect: {
-        badge: "🎉 PRIX EXACT !",
+        badge: "PRIX EXACT !",
         cls: "win",
-        detail: "Score parfait, tu as trouvé le prix au centime près.",
+        detail: "Perfect score, you found the price to the nearest cent.",
     },
     excellent: {
-        badge: "🔥 Excellent !",
+        badge: "Excellent !",
         cls: "win",
-        detail: "Tu es à moins de 2% du vrai prix.",
+        detail: "You are less than 2% of the real price.",
     },
     great: {
-        badge: "👏 Très bon coup !",
+        badge: "Very good move!",
         cls: "win",
-        detail: "Tu es à moins de 5% du vrai prix.",
+        detail: "You are less than 5% of the real price.",
     },
     good: {
-        badge: "✅ Bien joué",
+        badge: "Well done",
         cls: "win",
-        detail: "Tu es à moins de 10% du vrai prix.",
+        detail: "You are less than 10% off the real price.",
     },
     ok: {
-        badge: "🙂 Pas mal",
+        badge: "Not bad",
         cls: "warn",
-        detail: "Tu es dans la bonne zone, mais tu peux affiner.",
+        detail: "You're in the right zone, but you can refine.",
     },
     far: {
-        badge: "😬 Loin du compte",
+        badge: "Far from the count",
         cls: "warn",
-        detail: "Tu n'as pas dépassé le prix, mais l'écart est important.",
+        detail: "You haven't exceeded the price, but the gap is significant.",
     },
     bust: {
-        badge: "💥 Prix crevé !",
+        badge: "Smashed price!",
         cls: "bust",
-        detail: "Ton estimation dépasse le vrai prix : au Juste Prix, ça ne compte pas.",
+        detail: "Your estimate exceeds the real price: at the Right Price, it doesn't count.",
     },
 };
 type ResultType = keyof typeof MESSAGES;
@@ -151,7 +218,7 @@ function computeResult(g: number, price: number): Result {
 
 export function useGame() {
     const current = ref<Product | null>(null);
-    const totalScore = ref(0);
+    const totalScore = ref(Number(localStorage.getItem("totalScore")) || 0);
     const gaugeMax = ref(50);
     const guess = ref(0);
     const validated = ref(false);
@@ -159,6 +226,7 @@ export function useGame() {
     const targetMark = reactive({ cx: 210, cy: 10, opacity: 0 });
     const isLoading = ref(true);
     const loadError = ref<string | null>(null);
+    const selectedCategory = ref("all");
 
     type ResultType = keyof typeof MESSAGES;
     const resultType = ref<ResultType | null>(null);
@@ -182,9 +250,7 @@ export function useGame() {
         loadError.value = null;
 
         try {
-            // à chaque manche : on choisit un nouveau fichier au hasard,
-            // puis un item au hasard dans ce fichier
-            await loadChunk();
+            await loadChunk(selectedCategory.value);
 
             if (products.value.length === 0) {
                 throw new Error("Le fichier chargé ne contient aucun produit.");
@@ -210,6 +276,12 @@ export function useGame() {
         }
     }
 
+    function setCategory(categoryId: string) {
+        if (selectedCategory.value === categoryId) return;
+        selectedCategory.value = categoryId;
+        pickProduct();
+    }
+
     function onValidate() {
         if (validated.value || !current.value) return;
         const g = Number(guess.value) || 0;
@@ -230,9 +302,16 @@ export function useGame() {
         resultType.value = result.type;
         resultPoints.value = result.points;
         totalScore.value += result.points;
+
+        localStorage.setItem("totalScore", totalScore.value.toString());
     }
 
     onMounted(pickProduct);
+
+    function resetScore() {
+        totalScore.value = 0;
+        localStorage.setItem("totalScore", "0");
+    }
 
     return {
         current,
@@ -246,106 +325,10 @@ export function useGame() {
         resultPoints,
         isLoading,
         loadError,
+        selectedCategory,
         pickProduct,
         onValidate,
+        setCategory,
+        resetScore,
     };
 }
-
-// id,category_name
-// 56,Computer Monitors
-// 57,Computers & Tablets
-// 68,Wearable Technology
-// 69,Televisions & Video Products
-// 70,GPS & Navigation
-// 71,Headphones & Earbuds
-// 72,Office Electronics
-// 73,Portable Audio & Video
-// 74,eBook Readers & Accessories
-// 75,Cell Phones & Accessories
-// 77,Video Projectors
-// 79,Camera & Photo
-// 80,Security & Surveillance Equipment
-// 81,Computers
-// 82,Home Audio & Theater Products
-// 83,Video Game Consoles & Accessories
-// 99,Travel Duffel Bags
-// 100,Messenger Bags
-// 101,Travel Tote Bags
-// 102,Garment Bags
-// 103,Luggage Sets
-// 104,Suitcases
-// 105,Travel Accessories
-// 106,Rain Umbrellas
-// 107,Backpacks
-// 108,Luggage
-// 109,Laptop Bags
-// 163,Bath Products
-// 164,Bedding
-// 165,Home Décor Products
-// 166,Furniture
-// 169,Home Lighting & Ceiling Fans
-// 170,Kitchen & Dining
-// 171,"Heating, Cooling & Air Quality"
-// 173,Home Storage & Organization
-// 175,Vacuum Cleaners & Floor Care
-// 176,Ironing Products
-// 178,Pet Bird Supplies
-// 179,Cat Supplies
-// 180,Dog Supplies
-// 181,Fish & Aquatic Pets
-// 182,Horse Supplies
-// 183,Reptiles & Amphibian Supplies
-// 184,Small Animal Supplies
-// 185,Smart Home: New Smart Devices
-// 186,Smart Home: Voice Assistants and Hubs
-// 187,Smart Home: Smart Locks and Entry
-// 188,Smart Home: Home Entertainment
-// 189,Smart Home: WiFi and Networking
-// 190,Smart Home: Security Cameras and Systems
-// 191,Smart Home: Lighting
-// 192,Smart Home: Plugs and Outlets
-// 193,Smart Home: Vacuums and Mops
-// 194,Smart Home Thermostats - Compatibility Checker
-// 195,Smart Home: Lawn and Garden
-// 196,Smart Home: Other Solutions
-// 197,Smart Home - Heating & Cooling
-// 198,Sports & Fitness
-// 199,Outdoor Recreation
-// 200,Sports & Outdoors
-// 201,Home Appliances
-// 204,"Paint, Wall Treatments & Supplies"
-// 205,Safety & Security
-// 206,Light Bulbs
-// 207,Power Tools & Hand Tools
-// 208,Kitchen & Bath Fixtures
-// 209,Lighting & Ceiling Fans
-// 210,Electrical Equipment
-// 211,Hardware
-// 212,Building Supplies
-// 213,Measuring & Layout
-// 215,Tools & Home Improvement
-// 217,Toy Figures & Playsets
-// 218,Novelty Toys & Amusements
-// 219,Arts & Crafts Supplies
-// 220,Building Toys
-// 221,Dolls & Accessories
-// 222,Kids' Electronics
-// 223,Games & Accessories
-// 224,Learning & Education Toys
-// 225,Kids' Dress Up & Pretend Play
-// 226,Puppets & Puppet Theaters
-// 227,Puzzles
-// 228,Sports & Outdoor Play Toys
-// 229,Stuffed Animals & Plush Toys
-// 230,Baby & Toddler Toys
-// 231,"Tricycles, Scooters & Wagons"
-// 232,Finger Toys
-// 233,Toy Vehicle Playsets
-// 234,Kids' Play Trains & Trams
-// 235,Kids' Play Trucks
-// 236,Kids' Play Cars & Race Cars
-// 237,Kids' Play Boats
-// 238,Kids' Play Buses
-// 239,Kids' Play Tractors
-// 240,"Slot Cars, Race Tracks & Accessories"
-// 270,Toys & Games

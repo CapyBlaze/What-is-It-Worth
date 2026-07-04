@@ -1,3 +1,24 @@
+<script setup lang="ts">
+import { formatPrice } from "../composables/useGame";
+
+defineProps({
+    modelValue: { type: Number, required: true },
+    gaugeMax: { type: Number, required: true },
+    validated: { type: Boolean, required: true },
+    price: { type: Number, required: true },
+});
+
+const emit = defineEmits<{
+    (e: "update:modelValue", value: number): void;
+    (e: "validate"): void;
+}>();
+
+function onInput(event: Event) {
+    const target = event.target as HTMLInputElement;
+    emit("update:modelValue", Number(target.value) || 0);
+}
+</script>
+
 <template>
     <div class="guess-zone">
         <div class="price-target-tag">
@@ -17,7 +38,7 @@
                     inputmode="decimal"
                     :value="modelValue"
                     :disabled="validated"
-                    @input="$emit('update:modelValue', Number($event.target.value) || 0)"
+                    @input="onInput"
                 />
             </div>
         </div>
@@ -31,7 +52,7 @@
                 step="0.5"
                 :value="modelValue"
                 :disabled="validated"
-                @input="$emit('update:modelValue', Number($event.target.value) || 0)"
+                @input="onInput"
             />
             <span>{{ gaugeMax }}€</span>
         </div>
@@ -41,18 +62,6 @@
         </button>
     </div>
 </template>
-
-<script setup>
-import { formatPrice } from "../composables/useGame";
-
-defineProps({
-    modelValue: { type: Number, required: true },
-    gaugeMax: { type: Number, required: true },
-    validated: { type: Boolean, required: true },
-    price: { type: Number, required: true },
-});
-defineEmits(["update:modelValue", "validate"]);
-</script>
 
 <style scoped>
 .guess-zone {

@@ -1,3 +1,15 @@
+<script setup lang="ts">
+import { formatPrice } from "../composables/useGame";
+
+defineProps({
+    validated: { type: Boolean, required: true },
+    needleAngle: { type: Number, required: true },
+    targetMark: { type: Object, required: true },
+    gaugeMax: { type: Number, required: true },
+    price: { type: Number, required: true },
+});
+</script>
+
 <template>
     <div class="gauge-zone" :class="{ show: validated }">
         <svg viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg">
@@ -54,18 +66,6 @@
         </div>
     </div>
 </template>
-
-<script setup>
-import { formatPrice } from "../composables/useGame";
-
-defineProps({
-    validated: { type: Boolean, required: true },
-    needleAngle: { type: Number, required: true },
-    targetMark: { type: Object, required: true },
-    gaugeMax: { type: Number, required: true },
-    price: { type: Number, required: true },
-});
-</script>
 
 <style scoped>
 .gauge-zone {
