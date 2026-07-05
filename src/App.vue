@@ -36,7 +36,7 @@ const {
 
     <main v-if="current">
         <div class="game-card">
-            <ProductCard :product="current" />
+            <ProductCard :product="current" :validated="validated" />
 
             <div v-if="!validated">
                 <GuessControls
@@ -54,6 +54,7 @@ const {
                     :target-mark="targetMark"
                     :gauge-max="gaugeMax"
                     :price="current.price"
+                    :guess="guess"
                 />
 
                 <ResultPanel

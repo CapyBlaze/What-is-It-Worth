@@ -1,17 +1,50 @@
 <script setup lang="ts">
 import { formatPrice } from "../composables/useGame";
 
-defineProps({
+const props = defineProps({
     validated: { type: Boolean, required: true },
     needleAngle: { type: Number, required: true },
     targetMark: { type: Object, required: true },
     gaugeMax: { type: Number, required: true },
     price: { type: Number, required: true },
+    guess: { type: Number, required: true },
 });
+
+function angleForValue(value: number, max: number) {
+    const pct = Math.max(0, Math.min(1, value / max));
+    return -90 + pct * 180;
+}
+
+function pointForValue(value: number, max: number) {
+    const angle = angleForValue(value, max);
+    return {
+        cx: 210 + 178 * Math.cos((angle * Math.PI) / 180 - Math.PI / 2),
+        cy: 190 + 178 * Math.sin((angle * Math.PI) / 180 - Math.PI / 2),
+    };
+}
+
+const realMark = pointForValue(props.price, props.gaugeMax);
 </script>
 
 <template>
     <div class="gauge-zone" :class="{ show: validated }">
+        <div class="price-compare">
+            <div class="price-block">
+                <span class="price-swatch dot-swatch"></span>
+                <div>
+                    <div class="price-block-label">Ton estimation</div>
+                    <div class="price-block-value">{{ formatPrice(guess) }}</div>
+                </div>
+            </div>
+            <div class="price-block">
+                <span class="price-swatch needle-swatch"></span>
+                <div>
+                    <div class="price-block-label">Prix réel</div>
+                    <div class="price-block-value">{{ formatPrice(price) }}</div>
+                </div>
+            </div>
+        </div>
+
         <svg viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -31,11 +64,20 @@ defineProps({
             <circle
                 :cx="targetMark.cx"
                 :cy="targetMark.cy"
-                r="7"
+                r="10"
                 fill="#067D62"
                 stroke="#fff"
-                stroke-width="2"
+                stroke-width="2.5"
                 :opacity="targetMark.opacity"
+            />
+            <circle
+                :cx="realMark.cx"
+                :cy="realMark.cy"
+                r="10"
+                fill="#2f8ebb"
+                stroke="#fff"
+                stroke-width="2.5"
+                :opacity="validated ? 1 : 0"
             />
             <g class="needle" :style="{ transform: `rotate(${needleAngle}deg)` }">
                 <line
@@ -61,8 +103,9 @@ defineProps({
                 {{ gaugeMax }}€
             </text>
         </svg>
-        <div class="gaupe-caption">
-            {{ validated ? `Actual price: ${formatPrice(price)}` : "" }}
+
+        <div class="gauge-caption">
+            {{ validated ? `Écart : ${formatPrice(Math.abs(price - guess))}` : "" }}
         </div>
     </div>
 </template>
@@ -85,9 +128,60 @@ defineProps({
 }
 
 .gauge-zone.show {
-    max-height: 320px;
+    max-height: 400px;
     opacity: 1;
-    padding: 26px 20px 14px;
+    padding: 22px 20px 14px;
+}
+
+.price-compare {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.price-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.price-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.needle-swatch {
+    background: #2f8ebb;
+}
+
+.dot-swatch {
+    background: #067d62;
+}
+
+.real-swatch {
+    background: #cc0c39;
+}
+
+.price-block-label {
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #aab7b8;
+    line-height: 1.2;
+}
+
+.price-block-value {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+    color: #5d5d5d;
+    line-height: 1.2;
 }
 
 .gauge-zone svg {
@@ -103,12 +197,13 @@ defineProps({
 
 .gauge-caption {
     font-family: var(--font-display);
-    color: #fff;
+    color: #5d5d5d;
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.5px;
     min-height: 20px;
     text-align: center;
+    opacity: 0.85;
 }
 
 @media (prefers-reduced-motion: reduce) {

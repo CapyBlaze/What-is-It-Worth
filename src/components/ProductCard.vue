@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps({
     product: { type: Object, required: true },
+    validated: { type: Boolean, required: true },
 });
 </script>
 
@@ -36,6 +37,10 @@ defineProps({
 
             <div v-if="product.bought > 0" class="bought-badge">
                 <b>{{ product.bought }}+</b> purchased last month
+            </div>
+
+            <div v-if="validated" class="real-price">
+                {{ product.price.toFixed(2).replace(".", ",") }} €
             </div>
         </div>
     </div>
@@ -149,5 +154,18 @@ defineProps({
 .bought-badge b {
     color: var(--ink);
     font-weight: 700;
+}
+
+.real-price {
+    margin-top: 4px;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--deal-red);
+    font-family: var(--font-display);
+    line-height: 1.2;
+}
+
+.real-price strong {
+    font-weight: 800;
 }
 </style>

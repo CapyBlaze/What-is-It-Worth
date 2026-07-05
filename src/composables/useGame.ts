@@ -34,7 +34,7 @@ async function loadChunk(categoryGroupId: string) {
         const groupCategoryIds =
             GAME_CATEGORIES.find((g) => g.id === categoryGroupId)?.categories ?? [];
         const filtered = parsed.filter((p) => groupCategoryIds.includes(p.categoryId));
-        // filet de sécurité si l'index est légèrement désynchronisé des fichiers
+
         parsed = filtered.length > 0 ? filtered : parsed;
     }
 
@@ -87,7 +87,7 @@ function parseCSV(text: string): Product[] {
     return text
         .split("\n")
         .filter(Boolean)
-        .slice(1) // on saute la ligne d'en-tête "asin","title","imgUrl","stars","reviews","price","category_id"
+        .slice(1)
         .map((line) => {
             const p = splitCSVLine(line);
             return {
@@ -192,7 +192,12 @@ export function formatPrice(v: number) {
 }
 
 function niceMax(price: number) {
-    const raw = price * 2.2;
+    const minRatio = price < 50 ? 2.0 : price < 300 ? 1.6 : 1.3;
+    const maxRatio = price < 50 ? 5.0 : price < 300 ? 3.5 : 2.5;
+
+    const randomRatio = minRatio + Math.random() * (maxRatio - minRatio);
+    const raw = price * randomRatio;
+
     const step = raw < 20 ? 5 : raw < 100 ? 10 : raw < 500 ? 50 : 100;
     return Math.ceil(raw / step) * step;
 }
@@ -212,8 +217,10 @@ function computeResult(g: number, price: number): Result {
     if (diffPct <= 0.05) return { type: "great", points: 600 };
     if (diffPct <= 0.1) return { type: "good", points: 400 };
     if (diffPct <= 0.2) return { type: "ok", points: 200 };
+    if (diffPct <= 0.35) return { type: "far", points: 100 };
+    if (diffPct <= 0.6) return { type: "far", points: 40 };
 
-    return { type: "far", points: 50 };
+    return { type: "far", points: Math.max(0, Math.round(20 * (1 - diffPct))) };
 }
 
 export function useGame() {
@@ -289,14 +296,16 @@ export function useGame() {
         const result = computeResult(g, price);
 
         validated.value = true;
-        needleAngle.value = angleForValue(g, gaugeMax.value);
 
+        // le point vert se place immédiatement sur l'estimation du joueur
+        const guessAngle = angleForValue(g, gaugeMax.value);
+        targetMark.cx = 210 + 178 * Math.cos((guessAngle * Math.PI) / 180 - Math.PI / 2);
+        targetMark.cy = 190 + 178 * Math.sin((guessAngle * Math.PI) / 180 - Math.PI / 2);
+        targetMark.opacity = 1;
+
+        // l'aiguille grise anime depuis sa position de repos jusqu'au prix réel
         requestAnimationFrame(() => {
-            const targetAngle = angleForValue(price, gaugeMax.value);
-            needleAngle.value = targetAngle;
-            targetMark.cx = 210 + 178 * Math.cos((targetAngle * Math.PI) / 180 - Math.PI / 2);
-            targetMark.cy = 190 + 178 * Math.sin((targetAngle * Math.PI) / 180 - Math.PI / 2);
-            targetMark.opacity = 1;
+            needleAngle.value = angleForValue(price, gaugeMax.value);
         });
 
         resultType.value = result.type;
