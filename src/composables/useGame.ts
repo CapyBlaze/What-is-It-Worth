@@ -299,13 +299,11 @@ export function useGame() {
 
         validated.value = true;
 
-        // le point vert se place immédiatement sur l'estimation du joueur
         const guessAngle = angleForValue(g, gaugeMax.value);
         targetMark.cx = 210 + 178 * Math.cos((guessAngle * Math.PI) / 180 - Math.PI / 2);
         targetMark.cy = 190 + 178 * Math.sin((guessAngle * Math.PI) / 180 - Math.PI / 2);
         targetMark.opacity = 1;
 
-        // l'aiguille grise anime depuis sa position de repos jusqu'au prix réel
         requestAnimationFrame(() => {
             needleAngle.value = angleForValue(price, gaugeMax.value);
         });
