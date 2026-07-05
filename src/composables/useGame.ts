@@ -1,5 +1,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 
+const BASE_URL = import.meta.env.BASE_URL;
+
 const products = ref<Product[]>([]);
 let currentChunk = 0;
 
@@ -10,7 +12,7 @@ let categoryIndexCache: Record<string, number[]> | null = null;
 async function loadCategoryIndex(): Promise<Record<string, number[]>> {
     if (categoryIndexCache) return categoryIndexCache;
 
-    const res = await fetch("/data/category-index.json");
+    const res = await fetch(`${BASE_URL}data/category-index.json`);
     if (!res.ok) throw new Error("Impossible de charger l'index des catégories.");
 
     categoryIndexCache = await res.json();
@@ -25,7 +27,7 @@ async function loadChunk(categoryGroupId: string) {
 
     currentChunk = candidates[Math.floor(Math.random() * candidates.length)];
 
-    const filename = `/data/amazon_products_${String(currentChunk).padStart(4, "0")}.csv`;
+    const filename = `${BASE_URL}data/amazon_products_${String(currentChunk).padStart(4, "0")}.csv`;
     const text = await fetch(filename).then((r) => r.text());
 
     let parsed = parseCSV(text);
